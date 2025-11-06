@@ -1,5 +1,5 @@
-import { getCurrentUserOrganization, logout } from '@/app/actions/auth'
-import { Button } from '@/components/ui/button'
+import { getCurrentUserOrganization } from '@/app/actions/auth'
+import { LogoutButton } from '@/components/logout-button'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
@@ -39,11 +39,7 @@ export default async function DashboardLayout({
               <p className="font-medium">{organization.name}</p>
               <p className="text-gray-500">{user.email}</p>
             </div>
-            <form action={logout}>
-              <Button variant="outline" size="sm" type="submit">
-                Logout
-              </Button>
-            </form>
+            <LogoutButton />
           </div>
         </div>
       </header>

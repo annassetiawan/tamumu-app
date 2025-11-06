@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Guest } from '@/lib/types/database'
 import { QrCode } from 'lucide-react'
-import { QRCodeSVG } from 'react-qr-code'
+import QRCodeSVG from 'react-qr-code'
 import { useState } from 'react'
 
 interface GuestQRDialogProps {
