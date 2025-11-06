@@ -4,7 +4,7 @@
  * Wedding Create/Edit Dialog
  *
  * A reusable dialog component for creating and editing weddings.
- * Uses React Hook Form for form handling.
+ * Uses React Hook Form + Zod validation with shadcn Form components.
  */
 
 import { createWedding, updateWedding } from '@/app/actions/weddings'
@@ -17,13 +17,45 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Wedding } from '@/lib/types/database'
-import { Plus } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Loader2, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import * as z from 'zod'
+
+// Zod schema untuk validasi form
+const weddingFormSchema = z.object({
+  name: z.string().min(3, {
+    message: 'Nama acara minimal 3 karakter',
+  }),
+  slug: z
+    .string()
+    .min(3, {
+      message: 'Slug minimal 3 karakter',
+    })
+    .regex(/^[a-z0-9-]+$/, {
+      message: 'Slug hanya boleh huruf kecil, angka, dan tanda hubung (-)',
+    }),
+  wedding_date: z.string().optional(),
+  venue: z.string().optional(),
+  venue_address: z.string().optional(),
+})
+
+type WeddingFormValues = z.infer<typeof weddingFormSchema>
 
 interface WeddingDialogProps {
   wedding?: Wedding
@@ -33,41 +65,67 @@ interface WeddingDialogProps {
 export function WeddingDialog({ wedding, trigger }: WeddingDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const isEditing = !!wedding
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  // Initialize form with react-hook-form + zod resolver
+  const form = useForm<WeddingFormValues>({
+    resolver: zodResolver(weddingFormSchema),
+    defaultValues: {
+      name: wedding?.name || '',
+      slug: wedding?.slug || '',
+      wedding_date: wedding?.wedding_date
+        ? new Date(wedding.wedding_date).toISOString().slice(0, 16)
+        : '',
+      venue: wedding?.venue || '',
+      venue_address: wedding?.venue_address || '',
+    },
+  })
 
-    const formData = new FormData(e.currentTarget)
+  // Auto-generate slug dari nama
+  function generateSlug(name: string) {
+    return name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+  }
+
+  async function onSubmit(values: WeddingFormValues) {
+    setLoading(true)
 
     try {
+      // Convert form values to FormData untuk server action
+      const formData = new FormData()
+      Object.entries(values).forEach(([key, value]) => {
+        if (value) formData.append(key, value)
+      })
+
       const result = isEditing
         ? await updateWedding(wedding.id, formData)
         : await createWedding(formData)
 
       if (result.error) {
-        setError(typeof result.error === 'string' ? result.error : 'Terjadi kesalahan')
+        const errorMsg =
+          typeof result.error === 'string' ? result.error : 'Terjadi kesalahan'
+        toast.error(isEditing ? 'Gagal memperbarui acara' : 'Gagal membuat acara', {
+          description: errorMsg,
+        })
       } else {
         setOpen(false)
+        form.reset()
+        toast.success(isEditing ? 'Acara berhasil diperbarui' : 'Acara berhasil dibuat', {
+          description: `"${values.name}" telah ${isEditing ? 'diperbarui' : 'dibuat'}`,
+        })
         router.refresh()
       }
     } catch (err) {
-      setError('Terjadi kesalahan yang tidak terduga')
+      toast.error('Error', { description: 'Terjadi kesalahan yang tidak terduga' })
     } finally {
       setLoading(false)
     }
-  }
-
-  function generateSlug(name: string) {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
   }
 
   return (
@@ -89,90 +147,118 @@ export function WeddingDialog({ wedding, trigger }: WeddingDialogProps) {
               : 'Buat acara pernikahan baru untuk klien Anda'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nama Acara *</Label>
-            <Input
-              id="name"
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Nama Acara */}
+            <FormField
+              control={form.control}
               name="name"
-              placeholder="Pernikahan Andi & Budi"
-              defaultValue={wedding?.name}
-              required
-              onChange={(e) => {
-                // Auto-generate slug from name
-                const slugInput = document.getElementById('slug') as HTMLInputElement
-                if (!isEditing && slugInput) {
-                  slugInput.value = generateSlug(e.target.value)
-                }
-              }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nama Acara</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Pernikahan Andi & Budi"
+                      {...field}
+                      onChange={(e) => {
+                        field.onChange(e)
+                        // Auto-generate slug saat user mengetik nama
+                        if (!isEditing) {
+                          form.setValue('slug', generateSlug(e.target.value))
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="slug">Slug (untuk URL) *</Label>
-            <Input
-              id="slug"
+            {/* Slug */}
+            <FormField
+              control={form.control}
               name="slug"
-              placeholder="pernikahan-andi-budi"
-              defaultValue={wedding?.slug}
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Slug (untuk URL)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="pernikahan-andi-budi" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    URL undangan: /invite/{field.value || 'slug-anda'}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-            <p className="text-xs text-gray-500">
-              URL undangan: /invite/slug-anda
-            </p>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="wedding_date">Tanggal Acara</Label>
-            <Input
-              id="wedding_date"
+            {/* Tanggal Acara */}
+            <FormField
+              control={form.control}
               name="wedding_date"
-              type="datetime-local"
-              defaultValue={wedding?.wedding_date ? new Date(wedding.wedding_date).toISOString().slice(0, 16) : ''}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tanggal Acara</FormLabel>
+                  <FormControl>
+                    <Input type="datetime-local" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="venue">Nama Venue</Label>
-            <Input
-              id="venue"
+            {/* Venue */}
+            <FormField
+              control={form.control}
               name="venue"
-              placeholder="Ballroom Hotel XYZ"
-              defaultValue={wedding?.venue || ''}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nama Venue</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Ballroom Hotel XYZ" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="venue_address">Alamat Venue</Label>
-            <Textarea
-              id="venue_address"
+            {/* Alamat Venue */}
+            <FormField
+              control={form.control}
               name="venue_address"
-              placeholder="Jl. Contoh No. 123, Jakarta"
-              defaultValue={wedding?.venue_address || ''}
-              rows={3}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Alamat Venue</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Jl. Contoh No. 123, Jakarta"
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          {error && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-              {error}
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={loading}
+              >
+                Batal
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {loading ? 'Menyimpan...' : isEditing ? 'Simpan' : 'Buat Acara'}
+              </Button>
             </div>
-          )}
-
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={loading}
-            >
-              Batal
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Menyimpan...' : isEditing ? 'Simpan' : 'Buat Acara'}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

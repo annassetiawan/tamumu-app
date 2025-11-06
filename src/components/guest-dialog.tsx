@@ -4,6 +4,7 @@
  * Guest Create/Edit Dialog
  *
  * A reusable dialog component for creating and editing guests.
+ * Uses React Hook Form + Zod validation with shadcn Form components.
  */
 
 import { createGuest, updateGuest } from '@/app/actions/guests'
@@ -16,12 +17,48 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Guest } from '@/lib/types/database'
-import { Plus } from 'lucide-react'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Loader2, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { toast } from 'sonner'
+import * as z from 'zod'
+
+// Zod schema untuk validasi form
+const guestFormSchema = z.object({
+  name: z.string().min(2, {
+    message: 'Nama tamu minimal 2 karakter',
+  }),
+  contact: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val) return true // Optional field
+        // Check if it's a valid phone or email
+        const phoneRegex = /^[+]?[\d\s-()]+$/
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        return phoneRegex.test(val) || emailRegex.test(val)
+      },
+      {
+        message: 'Kontak harus berupa nomor telepon atau email yang valid',
+      }
+    ),
+})
+
+type GuestFormValues = z.infer<typeof guestFormSchema>
 
 interface GuestDialogProps {
   weddingId: string
@@ -32,31 +69,51 @@ interface GuestDialogProps {
 export function GuestDialog({ weddingId, guest, trigger }: GuestDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const isEditing = !!guest
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setError(null)
+  // Initialize form with react-hook-form + zod resolver
+  const form = useForm<GuestFormValues>({
+    resolver: zodResolver(guestFormSchema),
+    defaultValues: {
+      name: guest?.name || '',
+      contact: guest?.contact || '',
+    },
+  })
 
-    const formData = new FormData(e.currentTarget)
+  async function onSubmit(values: GuestFormValues) {
+    setLoading(true)
 
     try {
+      // Convert form values to FormData untuk server action
+      const formData = new FormData()
+      Object.entries(values).forEach(([key, value]) => {
+        if (value) formData.append(key, value)
+      })
+
       const result = isEditing
         ? await updateGuest(guest.id, weddingId, formData)
         : await createGuest(weddingId, formData)
 
       if (result.error) {
-        setError(typeof result.error === 'string' ? result.error : 'Terjadi kesalahan')
+        const errorMsg =
+          typeof result.error === 'string' ? result.error : 'Terjadi kesalahan'
+        toast.error(isEditing ? 'Gagal memperbarui tamu' : 'Gagal menambah tamu', {
+          description: errorMsg,
+        })
       } else {
         setOpen(false)
+        form.reset()
+        toast.success(isEditing ? 'Tamu berhasil diperbarui' : 'Tamu berhasil ditambahkan', {
+          description: `"${values.name}" telah ${
+            isEditing ? 'diperbarui' : 'ditambahkan ke daftar tamu'
+          }`,
+        })
         router.refresh()
       }
     } catch (err) {
-      setError('Terjadi kesalahan yang tidak terduga')
+      toast.error('Error', { description: 'Terjadi kesalahan yang tidak terduga' })
     } finally {
       setLoading(false)
     }
@@ -81,48 +138,59 @@ export function GuestDialog({ weddingId, guest, trigger }: GuestDialogProps) {
               : 'Tambahkan tamu baru ke daftar undangan'}
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nama Lengkap *</Label>
-            <Input
-              id="name"
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {/* Nama Lengkap */}
+            <FormField
+              control={form.control}
               name="name"
-              placeholder="John Doe"
-              defaultValue={guest?.name}
-              required
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nama Lengkap</FormLabel>
+                  <FormControl>
+                    <Input placeholder="John Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="contact">Kontak (WhatsApp/Email)</Label>
-            <Input
-              id="contact"
+            {/* Kontak */}
+            <FormField
+              control={form.control}
               name="contact"
-              placeholder="+62812345678 atau email@example.com"
-              defaultValue={guest?.contact || ''}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Kontak (Opsional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="+62812345678 atau email@example.com" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Nomor WhatsApp atau alamat email untuk mengirim undangan
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          {error && (
-            <div className="rounded-md bg-red-50 p-3 text-sm text-red-800">
-              {error}
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={loading}
+              >
+                Batal
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {loading ? 'Menyimpan...' : isEditing ? 'Simpan' : 'Tambah Tamu'}
+              </Button>
             </div>
-          )}
-
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={loading}
-            >
-              Batal
-            </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Menyimpan...' : isEditing ? 'Simpan' : 'Tambah Tamu'}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

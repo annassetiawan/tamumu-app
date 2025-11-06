@@ -1,12 +1,10 @@
 import { getCurrentUserOrganization } from '@/app/actions/auth'
-import { deleteWedding } from '@/app/actions/weddings'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { WeddingDialog } from '@/components/wedding-dialog'
+import { DeleteWeddingButton } from '@/components/delete-wedding-button'
 import { createServerClient } from '@/lib/supabase/server'
-import { Wedding } from '@/lib/types/database'
-import { Calendar, MapPin, Pencil, Trash2, Users } from 'lucide-react'
+import { Calendar, MapPin, Pencil, Users } from 'lucide-react'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
@@ -88,7 +86,10 @@ export default async function DashboardPage() {
                         </Button>
                       }
                     />
-                    <DeleteWeddingButton weddingId={wedding.id} />
+                    <DeleteWeddingButton
+                      weddingId={wedding.id}
+                      weddingName={wedding.name}
+                    />
                   </div>
                 </div>
               </CardHeader>
@@ -125,22 +126,5 @@ export default async function DashboardPage() {
         </div>
       )}
     </div>
-  )
-}
-
-function DeleteWeddingButton({ weddingId }: { weddingId: string }) {
-  async function handleDelete() {
-    'use server'
-    if (confirm('Yakin ingin menghapus acara ini? Semua data tamu akan ikut terhapus.')) {
-      await deleteWedding(weddingId)
-    }
-  }
-
-  return (
-    <form action={handleDelete}>
-      <Button variant="ghost" size="icon" type="submit">
-        <Trash2 className="h-4 w-4 text-red-600" />
-      </Button>
-    </form>
   )
 }
