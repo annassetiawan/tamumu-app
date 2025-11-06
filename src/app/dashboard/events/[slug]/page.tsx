@@ -1,13 +1,14 @@
 import { getCurrentUserOrganization } from '@/app/actions/auth'
-import { deleteGuest } from '@/app/actions/guests'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { ExportCSVButton } from '@/components/export-csv-button'
 import { GuestDialog } from '@/components/guest-dialog'
 import { GuestQRDialog } from '@/components/guest-qr-dialog'
+import { DeleteGuestButton } from '@/components/delete-guest-button'
+import { StatusBadge } from '@/components/status-badge'
 import { createServerClient } from '@/lib/supabase/server'
-import { ArrowLeft, Calendar, MapPin, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Calendar, MapPin, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 
@@ -179,7 +180,11 @@ export default async function EventDetailPage({
                             </Button>
                           }
                         />
-                        <DeleteGuestButton guestId={guest.id} weddingId={wedding.id} />
+                        <DeleteGuestButton
+                          guestId={guest.id}
+                          weddingId={wedding.id}
+                          guestName={guest.name}
+                        />
                       </div>
                     </TableCell>
                   </TableRow>
@@ -190,40 +195,5 @@ export default async function EventDetailPage({
         </CardContent>
       </Card>
     </div>
-  )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles = {
-    pending: 'bg-gray-100 text-gray-800',
-    confirmed_rsvp: 'bg-blue-100 text-blue-800',
-    checked_in: 'bg-green-100 text-green-800',
-  }
-
-  const labels = {
-    pending: 'Pending',
-    confirmed_rsvp: 'Confirmed',
-    checked_in: 'Checked In',
-  }
-
-  return (
-    <span className={`px-2 py-1 text-xs font-medium rounded-full ${styles[status as keyof typeof styles] || styles.pending}`}>
-      {labels[status as keyof typeof labels] || status}
-    </span>
-  )
-}
-
-function DeleteGuestButton({ guestId, weddingId }: { guestId: string; weddingId: string }) {
-  async function handleDelete() {
-    'use server'
-    await deleteGuest(guestId, weddingId)
-  }
-
-  return (
-    <form action={handleDelete}>
-      <Button variant="ghost" size="icon" type="submit">
-        <Trash2 className="h-4 w-4 text-red-600" />
-      </Button>
-    </form>
   )
 }

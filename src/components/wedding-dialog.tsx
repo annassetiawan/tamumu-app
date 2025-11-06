@@ -21,9 +21,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Wedding } from '@/lib/types/database'
-import { Plus } from 'lucide-react'
+import { Plus, Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
+import { toast } from 'sonner'
 
 interface WeddingDialogProps {
   wedding?: Wedding
@@ -51,13 +52,22 @@ export function WeddingDialog({ wedding, trigger }: WeddingDialogProps) {
         : await createWedding(formData)
 
       if (result.error) {
-        setError(typeof result.error === 'string' ? result.error : 'Terjadi kesalahan')
+        const errorMsg = typeof result.error === 'string' ? result.error : 'Terjadi kesalahan'
+        setError(errorMsg)
+        toast.error(isEditing ? 'Gagal memperbarui acara' : 'Gagal membuat acara', {
+          description: errorMsg,
+        })
       } else {
         setOpen(false)
+        toast.success(isEditing ? 'Acara berhasil diperbarui' : 'Acara berhasil dibuat', {
+          description: `"${formData.get('name')}" telah ${isEditing ? 'diperbarui' : 'dibuat'}`,
+        })
         router.refresh()
       }
     } catch (err) {
-      setError('Terjadi kesalahan yang tidak terduga')
+      const errorMsg = 'Terjadi kesalahan yang tidak terduga'
+      setError(errorMsg)
+      toast.error('Error', { description: errorMsg })
     } finally {
       setLoading(false)
     }
@@ -169,6 +179,7 @@ export function WeddingDialog({ wedding, trigger }: WeddingDialogProps) {
               Batal
             </Button>
             <Button type="submit" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {loading ? 'Menyimpan...' : isEditing ? 'Simpan' : 'Buat Acara'}
             </Button>
           </div>
