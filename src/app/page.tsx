@@ -1,65 +1,130 @@
-import Image from "next/image";
+import { createServerClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Calendar, Users, QrCode, Download } from 'lucide-react'
 
-export default function Home() {
+export default async function HomePage() {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  // Redirect authenticated users to dashboard
+  if (user) {
+    redirect('/dashboard')
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="min-h-screen bg-gradient-to-b from-pink-50 to-white">
+      {/* Header */}
+      <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <div className="text-xl font-bold">Mitra Undangan</div>
+          <div className="flex gap-2">
+            <Link href="/login">
+              <Button variant="ghost">Login</Button>
+            </Link>
+            <Link href="/register">
+              <Button>Daftar Gratis</Button>
+            </Link>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </header>
+
+      {/* Hero Section */}
+      <section className="container mx-auto px-4 py-20 text-center">
+        <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+          Platform Undangan Digital<br />untuk Wedding Organizer
+        </h1>
+        <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+          Kelola undangan digital semua klien Anda dalam satu dashboard.
+          Profesional, modern, dan mudah digunakan.
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Link href="/register">
+            <Button size="lg" className="text-lg px-8">
+              Mulai Gratis
+            </Button>
+          </Link>
+          <Link href="/login">
+            <Button size="lg" variant="outline" className="text-lg px-8">
+              Login
+            </Button>
+          </Link>
         </div>
-      </main>
+      </section>
+
+      {/* Features */}
+      <section className="container mx-auto px-4 py-20">
+        <h2 className="text-3xl font-bold text-center mb-12">Fitur Utama</h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card>
+            <CardHeader>
+              <Calendar className="h-12 w-12 text-primary mb-2" />
+              <CardTitle>Kelola Banyak Acara</CardTitle>
+              <CardDescription>
+                Satu dashboard untuk semua klien pernikahan Anda
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Users className="h-12 w-12 text-primary mb-2" />
+              <CardTitle>Manajemen Tamu</CardTitle>
+              <CardDescription>
+                Kelola daftar tamu, lacak RSVP, dan pantau kehadiran
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <QrCode className="h-12 w-12 text-primary mb-2" />
+              <CardTitle>QR Code Check-in</CardTitle>
+              <CardDescription>
+                QR code unik untuk setiap tamu, check-in cepat dan mudah
+              </CardDescription>
+            </CardHeader>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Download className="h-12 w-12 text-primary mb-2" />
+              <CardTitle>Ekspor Data</CardTitle>
+              <CardDescription>
+                Ekspor daftar tamu ke CSV untuk distribusi undangan
+              </CardDescription>
+            </CardHeader>
+          </Card>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="container mx-auto px-4 py-20">
+        <Card className="bg-gradient-to-r from-pink-500 to-purple-600 text-white border-0">
+          <CardContent className="py-12 text-center">
+            <h2 className="text-3xl font-bold mb-4">
+              Siap untuk Meningkatkan Layanan Anda?
+            </h2>
+            <p className="text-xl mb-8 opacity-90">
+              Bergabunglah dengan Wedding Organizer modern yang sudah menggunakan platform kami
+            </p>
+            <Link href="/register">
+              <Button size="lg" variant="secondary" className="text-lg px-8">
+                Daftar Sekarang - Gratis!
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t bg-gray-50 py-8">
+        <div className="container mx-auto px-4 text-center text-gray-600">
+          <p>&copy; 2024 Mitra Undangan. Platform B2B untuk Wedding Organizer.</p>
+        </div>
+      </footer>
     </div>
-  );
+  )
 }
