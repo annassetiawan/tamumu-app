@@ -1,9 +1,5 @@
-import { submitRSVP } from '@/app/actions/rsvp'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { RSVPForm } from '@/components/rsvp-form'
 import { createClient } from '@supabase/supabase-js'
 import { Calendar, MapPin, CheckCircle2 } from 'lucide-react'
 import { notFound } from 'next/navigation'
@@ -148,40 +144,5 @@ export default async function InvitationPage({
         )}
       </div>
     </div>
-  )
-}
-
-function RSVPForm({ guest, weddingSlug }: { guest: any; weddingSlug: string }) {
-  async function handleSubmit(formData: FormData) {
-    'use server'
-    return submitRSVP(guest.id, weddingSlug, formData)
-  }
-
-  return (
-    <form action={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Nama Lengkap *</Label>
-        <Input
-          id="name"
-          name="name"
-          defaultValue={guest.name}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="message">Ucapan untuk Pengantin (Opsional)</Label>
-        <Textarea
-          id="message"
-          name="message"
-          placeholder="Selamat atas pernikahan kalian..."
-          rows={4}
-        />
-      </div>
-
-      <Button type="submit" className="w-full">
-        Konfirmasi Kehadiran
-      </Button>
-    </form>
   )
 }
